@@ -2,5 +2,6 @@
 .Rhistory
 .RData
 .Ruserdata
-raw-data/
+raw-data/*.csv
+data/
 .Rbuildignore
