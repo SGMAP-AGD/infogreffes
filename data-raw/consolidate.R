@@ -25,47 +25,60 @@ table_greffes <- bind_rows(
   table_greffes2016_from2016, 
   table_greffes2015_from2016, 
   table_greffes2014_from2016) 
+
 rm(list = ls(pattern = "table\\_greffes20*"))
+
 save(table_greffes, file = "data/table_greffes.Rda")
 
-table_greffes2 <- table_greffes %>%
-  filter_(
+load("data/table_greffes.Rda")
+
+clean_table_greffes <- function(tbl) {
+  tbl %>%
+    dplyr::filter_(
+      .dots = list(
+        ~ is.na(date_cloture) == FALSE, 
+        ~ is.na(siren) == FALSE
+      )
+    ) %>% 
+    dplyr::select_(
+      .dots = list(~ denomination, ~ siren, ~ date_cloture, ~ date_depot, ~ chiffre_affaires, ~ resultat, ~ source, ~ duree)
+      ) %>%
+    dplyr::distinct_(
+      .dots = list(~ siren, ~ date_cloture, ~ chiffre_affaires, ~ resultat), 
+      .keep_all = TRUE
+      ) %>%
+  dplyr::mutate_(
     .dots = list(
-      ~ is.na(date_cloture) == FALSE, 
-      ~ is.na(siren) == FALSE
-    )
-  )
+      "source_year" = ~ as.numeric(
+        sub(pattern = "data\\-raw\\/chiffres\\-cles\\-([[:digit:]]{4})\\.csv", 
+            replacement = "\\1", 
+            x = source)
+        )
+      )
+    ) %>%
+    dplyr::group_by_(.dots = list(~ siren, ~ date_cloture)) %>%
+    dplyr::filter_(.dots = ~ source_year == max(source_year)) %>% 
+    dplyr::ungroup() %>%
+    dplyr::group_by_(.dots = list(~ siren)) %>%
+    dplyr::mutate_(
+      .dots = list(
+        "duree_interval" = ~ ifelse(
+          is.na(dplyr::lag(date_cloture)), 
+          NA,
+          lubridate::time_length(
+            lubridate::interval(
+              start = dplyr::lag(date_cloture), 
+              end = date_cloture
+              ), 
+          unit = "months"
+          )
+        ) 
+      )
+    ) %>% 
+    dplyr::ungroup()
+  }
 
-table_greffes2 <- table_greffes2 %>%
-  select(denomination, siren, date_cloture, date_depot, chiffre_affaires, resultat, source, duree) %>%
-  distinct(siren, date_cloture, chiffre_affaires, resultat, .keep_all = TRUE) 
+# clean_table_greffes(tbl = table_greffes) 
 
-table_greffes2 <- table_greffes2 %>% 
-  mutate(
-    source_year = as.numeric(
-      sub(pattern = "data\\-raw\\/chiffres\\-cles\\-([[:digit:]]{4})\\.csv", 
-          replacement = "\\1", 
-          x = source))
-  ) 
-
-table_greffes2 <- table_greffes2 %>% 
-  group_by(siren, date_cloture) %>%
-  filter(source_year == max(source_year))
-
-table_greffes2 <- table_greffes2 %>% 
-  ungroup()
-
-table_greffes2 <- table_greffes2 %>%
-  group_by(siren) %>%
-  mutate(
-    duree_interval = ifelse(
-      is.na(dplyr::lag(date_cloture)), NA, 
-      time_length(
-        interval(
-          start = dplyr::lag(date_cloture), 
-          end = date_cloture), 
-        unit = "months")
-    ) 
-  )
-
+table_greffes2 <- clean_table_greffes(tbl = table_greffes) 
 save(table_greffes2, file = "data/table_greffes2.Rda")
