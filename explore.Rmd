@@ -1,0 +1,43 @@
+---
+title: "R Notebook"
+output:
+  html_document: default
+  html_notebook: default
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+```{r}
+library("infogreffes")
+library("dplyr")
+library("lubridate")
+load(file = "data/table_greffes2.Rda")
+table_greffes2 <- table_greffes2 %>% ungroup()
+.date <- lubridate::ymd("2017-01-01")
+.date_12 <- .date %m-% months(12L)
+```
+
+```{r}
+table_greffes2 %>% 
+  filter(
+    date_cloture < .date, 
+    date_cloture >= .date_12
+    ) %>% 
+  distinct(siren, .keep_all = TRUE) %>% 
+  nrow()
+```
+
+
+```{r}
+table_greffes2 %>% 
+  filter(
+    date_cloture < .date, 
+    date_cloture >= .date_12, 
+    duree_interval == 12, 
+    is.na(chiffre_affaires) == FALSE, 
+    chiffre_affaires != 0 
+    ) %>% 
+  nrow()
+```
